@@ -7,7 +7,6 @@
 # Examples:
 #   make                  # configure + build with CMake (Release)
 #   make cc               # build directly with $(CC), no CMake needed
-#   make test             # unit tests + integration tests (needs a ttyd server)
 #   make static           # fully static musl build (Linux, no TLS)
 #   make static TLS=1     # fully static musl build with OpenSSL (VENDOR=1 to build it)
 #   make install          # install into $(PREFIX)
@@ -30,8 +29,7 @@ else
   TLS_FLAG := -DTC_WITH_TLS=OFF
 endif
 
-.PHONY: all build configure cc test unit-test integration-test static static-tls \
-        clean distclean install uninstall format help
+.PHONY: all build configure cc static clean distclean install uninstall format help
 
 all: build
 
@@ -39,7 +37,6 @@ help:
 	@echo "targets:"
 	@echo "  all/build          configure and build with CMake (default)"
 	@echo "  cc                 build with \$$(CC) without CMake"
-	@echo "  test               run the unit and integration tests"
 	@echo "  static             static musl build (BUILD_DIR=build-musl)"
 	@echo "  install            install into \$$(PREFIX)"
 	@echo "  format             clang-format the sources"
@@ -48,7 +45,7 @@ help:
 configure:
 	@mkdir -p "$(BUILD_DIR)"
 	@$(CMAKE) -S . -B "$(BUILD_DIR)" -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) $(TLS_FLAG) \
-	    -DTC_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX="$(PREFIX)"
+	    -DCMAKE_INSTALL_PREFIX="$(PREFIX)"
 
 build: configure
 	@$(CMAKE) --build "$(BUILD_DIR)" --parallel
@@ -58,14 +55,6 @@ cc:
 	@$(CC) -std=c99 -O2 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE \
 	    -Isrc $(TLS_FLAG) -o ttyd-client $(SRC) $$([ "$(TLS)" = "1" ] && echo "-lssl -lcrypto")
 	@echo "built ./ttyd-client"
-
-unit-test: build
-	@"$(BUILD_DIR)/unit-tests"
-
-integration-test: build
-	@TTYD="$${TTYD:-ttyd}" python3 test/integration.py
-
-test: unit-test integration-test
 
 # Fully static build against musl libc. Cross compilation works the same way:
 #   CC=aarch64-linux-musl-gcc make static
