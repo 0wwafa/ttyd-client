@@ -115,8 +115,9 @@ build_client() {
 
     mkdir -p "${PROJECT_DIR}/build"
     local output_name="ttyd-client"
-    [ "${ALIAS}" = "win32" ] && output_name="ttyd-client.exe"
-    cp ttyd-client "${PROJECT_DIR}/build/${output_name}"
+    local source_name="ttyd-client"
+    [ "${ALIAS}" = "win32" ] && output_name="ttyd-client.exe" && source_name="ttyd-client.exe"
+    cp "${source_name}" "${PROJECT_DIR}/build/${output_name}"
     file "${PROJECT_DIR}/build/${output_name}"
 }
 
