@@ -134,6 +134,15 @@ build() {
         SYSTEM="Windows"
     fi
 
+    # Some cross toolchains do not reliably build OpenSSL for these targets.
+    # Use the no-TLS fallback instead of failing the whole build.
+    case "${ALIAS}" in
+        ppc64|ppc64le|win32)
+            echo "=== ${ALIAS}: disabling TLS for this cross target"
+            BUILD_TLS=0
+            ;;
+    esac
+    
     echo "=== Installing toolchain ${ALIAS} (${TARGET})..."
 
     # Prepend (not append) so that the musl cross toolchain wins over a host
