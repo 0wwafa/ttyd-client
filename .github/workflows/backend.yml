@@ -46,16 +46,17 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake musl-tools python3
+          sudo apt-get install -y build-essential cmake curl musl-tools perl python3
 
-      - name: Static musl build (no TLS)
-        run: make static BUILD_DIR=build-musl TLS=0
+      - name: Static musl build
+        run: make static BUILD_DIR=build-musl
 
-      - name: Verify the binary is static
+      - name: Verify the binary is static and has TLS
         run: |
           file build-musl/ttyd-client | tee /tmp/file.txt
           grep -q "statically linked" /tmp/file.txt
-          ./build-musl/ttyd-client --version
+          ./build-musl/ttyd-client --version | tee /tmp/version.txt
+          grep -q "TLS support: enabled" /tmp/version.txt
 
       - uses: actions/upload-artifact@v7
         with:
@@ -132,31 +133,18 @@ jobs:
       matrix:
         include:
           - target: i686
-            build_tls: 1
           - target: x86_64
-            build_tls: 1
           - target: arm
-            build_tls: 1
           - target: armhf
-            build_tls: 1
           - target: aarch64
-            build_tls: 1
           - target: mips
-            build_tls: 1
           - target: mipsel
-            build_tls: 1
           - target: mips64
-            build_tls: 1
           - target: mips64el
-            build_tls: 1
           - target: ppc64
-            build_tls: 0
           - target: ppc64le
-            build_tls: 0
           - target: s390x
-            build_tls: 1
           - target: win32
-            build_tls: 0
     steps:
       - uses: actions/checkout@v6
 
@@ -168,7 +156,6 @@ jobs:
       - name: Cross build (${{ matrix.target }})
         env:
           BUILD_TARGET: ${{ matrix.target }}
-          BUILD_TLS: ${{ matrix.build_tls }}
         run: ./scripts/cross-build.sh
 
       - uses: actions/upload-artifact@v7

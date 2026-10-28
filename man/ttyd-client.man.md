@@ -14,7 +14,7 @@ ttyd-client 1 "October 2026" ttyd-client "User Manual"
 
   Features:
 
-  - Pure C, no run time dependencies (TLS is optional, provided by OpenSSL)
+  - Pure C, statically linked OpenSSL for TLS (wss/https)
   - Same protocol and client options as the ttyd web client
   - Basic authentication, auth proxy headers and URL arguments
   - Terminal resize forwarding, window title updates and flow control
@@ -123,7 +123,7 @@ ttyd-client ws://localhost:7681/mounted/here/ws
       Private key (PEM) belonging to the client certificate.
 
   -A, --ssl-ca \<path\>
-      CA bundle used to verify the server certificate, instead of the system store.
+      CA bundle used to verify the server certificate, instead of the platform trust store. On Windows the platform store is the Windows certificate store (current user and local machine `ROOT`); elsewhere it is the OpenSSL default CA file and directory.
 
   -x, --proxy \<url\>
       HTTP proxy used for the connection (format: `http://[user:password@]host[:port]`). By default the **https_proxy**, **http_proxy** or **all_proxy** environment variables are used.

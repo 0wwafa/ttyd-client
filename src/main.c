@@ -59,7 +59,7 @@ static void print_help(void) {
           "    -k, --insecure          Do not verify the server certificate\n"
           "    -C, --ssl-cert          Client certificate file path (PEM)\n"
           "    -K, --ssl-key           Client key file path (PEM)\n"
-          "    -A, --ssl-ca            CA bundle used to verify the server (PEM)\n"
+          "    -A, --ssl-ca            CA bundle used to verify the server (PEM, replaces the system store)\n"
           "    -x, --proxy             HTTP proxy used for the connection (default: $https_proxy/$http_proxy/$all_proxy)\n"
           "        --no-proxy          Never use a proxy\n"
           "    -q, --quiet             Only print errors\n"
@@ -79,11 +79,7 @@ static void print_help(void) {
 
 static void print_version(void) {
   printf("ttyd-client version %s\n", TTYD_CLIENT_VERSION);
-#ifdef TC_WITH_TLS
   printf("TLS support: enabled (OpenSSL)\n");
-#else
-  printf("TLS support: disabled (ws:// only)\n");
-#endif
 }
 
 static int parse_int_arg(const char *name, const char *value, long min, long max) {

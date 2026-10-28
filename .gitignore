@@ -42,8 +42,8 @@ CMakeScripts
 cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
-build
-build-*
+/build
+/build-*
 
 # Test / packaging output
 dist/
@@ -54,3 +54,7 @@ dist/
 
 # VSCode files
 .vscode/
+
+# old session
+oldsession.md
+

@@ -23,7 +23,6 @@ parts:
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/usr
-      - -DTC_WITH_TLS=ON
 
     override-pull: |
       snapcraftctl pull

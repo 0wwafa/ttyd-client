@@ -6,6 +6,7 @@
 #include "b64.h"
 #include "log.h"
 #include "utils.h"
+#include "version.h"
 
 /* Send an HTTP CONNECT request over a plain socket and read the response head.
  * Returns true when the proxy answered "200". */
@@ -87,12 +88,6 @@ bool io_open(tc_io *io, const tc_url *url, const tls_options *tls_opts, const tc
   }
 
   if (url->tls) {
-    if (!tc_tls_available()) {
-      snprintf(err, err_len, "this build of ttyd-client does not support TLS, use a ws:// url instead");
-      net_close(io->fd);
-      io->fd = TC_INVALID_SOCKET;
-      return false;
-    }
     tls_options opts = *tls_opts;
     if (opts.timeout_ms <= 0) opts.timeout_ms = timeout_ms;
     io->tls = tc_tls_start(io->fd, url->host, &opts, err, err_len);

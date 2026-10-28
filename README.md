@@ -26,15 +26,16 @@ dependencies.
   updates, terminal size reporting
 - **Basic authentication** (`-c user:pass`), reverse proxy auth headers
   (`-H name=value`) and client arguments passed in the url (`-a key=value`)
-- **TLS** (`wss://`) with certificate verification, client certificates and
+- **TLS** (`wss://`) with certificate verification against the platform trust
+  store (the Windows certificate store on Windows), client certificates and
   configurable CA bundles, plus **HTTP proxy** tunnelling (`CONNECT`)
 - **Flow control**: pauses the remote terminal instead of buffering without
   limit when the local terminal (or a pipe) is slower than the output
 - **Automatic reconnection** with exponential backoff
 - **Client preferences**: applies `SET_PREFERENCES` sent by the server and lets
   you override them with `-t key=value`
-- **Zero dependencies**: TLS is optional (OpenSSL), everything else
-  (websocket, HTTP, JSON, SHA-1, base64, URL parsing) is built in
+- **Zero dependencies at run time**: TLS is built in via OpenSSL, everything
+  else (websocket, HTTP, JSON, SHA-1, base64, URL parsing) is built in
 - **Cross platform**: Linux (glibc and musl), macOS, FreeBSD/OpenBSD,
   OpenWrt, Windows (MSVC and MinGW). Static binaries for 13 architectures,
   built exactly like the ttyd release binaries
@@ -49,8 +50,8 @@ binaries are statically linked against musl and have no run time dependencies.
 
 ### Build from source
 
-Requirements: a C99 compiler and CMake >= 3.12. OpenSSL is optional and only
-needed for `wss://` / `https://` urls.
+Requirements: a C99 compiler, CMake >= 3.12 and OpenSSL development files.
+TLS is always enabled.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -61,16 +62,27 @@ sudo cmake --install build        # installs ttyd-client and the man page
 Without CMake:
 
 ```bash
-make cc                           # uses cc, builds ./ttyd-client
+make cc                           # uses cc, builds ./ttyd-client with TLS
 ```
 
-Fully static (musl) build:
+Fully static build with TLS:
 
 ```bash
-sudo apt install musl-tools
-make static                       # no TLS, static, stripped
-make static TLS=1                 # same but with OpenSSL (needs a static libssl)
+sudo apt install musl-tools curl perl
+make static                       # static, stripped, vendors OpenSSL
+make static CC=aarch64-linux-musl-gcc   # cross compile
+make static CC=x86_64-w64-mingw32-gcc   # MinGW
 ```
+
+The static targets download and build a matching static OpenSSL inside
+`$(BUILD_DIR)` automatically, so no system OpenSSL is needed. To reuse a
+prebuilt static OpenSSL instead:
+
+```bash
+make static VENDOR=0 OPENSSL_ROOT_DIR=/path/to/static/openssl
+```
+
+Use `OPENSSL_VERSION=3.5.5` to vendor a different OpenSSL release.
 
 Cross compilation uses the same musl toolchains as ttyd:
 
@@ -79,13 +91,17 @@ env BUILD_TARGET=aarch64 ./scripts/cross-build.sh
 env BUILD_TARGET=win32 ./scripts/cross-build.sh
 ```
 
-The script builds OpenSSL for the target (unless `BUILD_TLS=0`) and produces
-`build/ttyd-client.<target>`.
+The script builds a static OpenSSL for every target, including `win32`, and
+produces `build/ttyd-client.<target>`.
 
 ### Windows
 
 - Binary releases are static executables built with MSVC (`x64-windows-static`)
   and with MinGW (`x86_64-w64-mingw32`).
+- TLS verification uses the Windows certificate store (the current user and
+  local machine `ROOT` stores), so certificates trusted by Windows work without
+  extra configuration. Use `-A/--ssl-ca` to override the store with a PEM
+  bundle.
 - To compile on Windows, use the same vcpkg triplet as ttyd:
 
 ```powershell

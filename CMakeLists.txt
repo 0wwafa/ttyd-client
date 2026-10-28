@@ -25,7 +25,6 @@ else()
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS _GNU_SOURCE)
 endif()
 
-option(TC_WITH_TLS "Enable TLS (wss/https) support with OpenSSL" ON)
 option(TC_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 set(SOURCE_FILES
@@ -49,30 +48,22 @@ set(SOURCE_FILES
 
 set(LINK_LIBS "")
 
-if(TC_WITH_TLS)
-    find_package(OpenSSL)
-    if(OPENSSL_FOUND)
-        list(APPEND INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
-        # Prefer the imported targets: they carry the dependency information
-        # (eg: a statically linked zlib) instead of raw variables that may not
-        # be resolvable when cross compiling.
-        if(TARGET OpenSSL::SSL AND TARGET OpenSSL::Crypto)
-            list(APPEND LINK_LIBS OpenSSL::SSL OpenSSL::Crypto)
-        else()
-            list(APPEND LINK_LIBS ${OPENSSL_LIBRARIES})
-        endif()
-        add_definitions(-DTC_WITH_TLS=1)
-        message(STATUS "TLS support: enabled (OpenSSL ${OPENSSL_VERSION})")
-    else()
-        message(WARNING "OpenSSL not found, building without TLS support (ws:// only)")
-    endif()
+find_package(OpenSSL REQUIRED)
+list(APPEND INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
+# Prefer the imported targets: they carry the dependency information
+# (eg: a statically linked zlib) instead of raw variables that may not
+# be resolvable when cross compiling.
+if(TARGET OpenSSL::SSL AND TARGET OpenSSL::Crypto)
+    list(APPEND LINK_LIBS OpenSSL::SSL OpenSSL::Crypto)
 else()
-    message(STATUS "TLS support: disabled")
+    list(APPEND LINK_LIBS ${OPENSSL_LIBRARIES})
 endif()
+message(STATUS "TLS support: enabled (OpenSSL ${OPENSSL_VERSION})")
 
 if(WIN32)
-    # winsock2, and the static libuv style dependencies are not needed here
-    list(APPEND LINK_LIBS ws2_32)
+    # winsock2, the Windows certificate store (crypt32), and the system
+    # libraries required by a static OpenSSL
+    list(APPEND LINK_LIBS ws2_32 crypt32 gdi32)
     if(MSVC)
         find_package(getopt CONFIG)
         if(getopt_FOUND)

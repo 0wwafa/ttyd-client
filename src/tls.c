@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef TC_WITH_TLS
-
 #ifndef _WIN32
 #include <arpa/inet.h>
 #endif
@@ -14,6 +12,18 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <wincrypt.h>
+#endif
+
+#include "log.h"
 #include "utils.h"
 
 struct tc_tls {
@@ -41,7 +51,44 @@ static int wait_fd(socket_t sock, int timeout_ms, bool writing) {
   return writing ? net_wait_writable(sock, timeout_ms) : net_wait_readable(sock, timeout_ms);
 }
 
-bool tc_tls_available(void) { return true; }
+#ifdef _WIN32
+/* Add the certificates from one Windows ROOT store to the OpenSSL trust store.
+ * The Windows ROOT store is the trust-anchor store; the CA store contains
+ * intermediates and must not be treated as trusted roots. */
+static int load_windows_root_store(SSL_CTX *ctx, DWORD location) {
+  HCERTSTORE store =
+      CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0, location | CERT_STORE_READONLY_FLAG, L"ROOT");
+  if (store == NULL) return 0;
+
+  int loaded = 0;
+  PCCERT_CONTEXT cert_ctx = NULL;
+  while ((cert_ctx = CertEnumCertificatesInStore(store, cert_ctx)) != NULL) {
+    const unsigned char *der = cert_ctx->pbCertEncoded;
+    X509 *cert = d2i_X509(NULL, &der, (long)cert_ctx->cbCertEncoded);
+    if (cert == NULL) {
+      ERR_clear_error();
+      continue;
+    }
+    if (X509_STORE_add_cert(SSL_CTX_get_cert_store(ctx), cert) == 1) {
+      loaded++;
+    } else {
+      /* Duplicates are expected when the same root is in both locations. */
+      ERR_clear_error();
+    }
+    X509_free(cert);
+  }
+
+  CertCloseStore(store, 0);
+  return loaded;
+}
+
+static int load_windows_root_certs(SSL_CTX *ctx) {
+  int loaded = load_windows_root_store(ctx, CERT_SYSTEM_STORE_CURRENT_USER);
+  loaded += load_windows_root_store(ctx, CERT_SYSTEM_STORE_LOCAL_MACHINE);
+  log_debug("loaded %d CA certificate(s) from the Windows certificate store\n", loaded);
+  return loaded;
+}
+#endif
 
 tc_tls *tc_tls_start(socket_t sock, const char *host, const tls_options *options, char *err, size_t err_len) {
   if (!OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)) {
@@ -66,10 +113,24 @@ tc_tls *tc_tls_start(socket_t sock, const char *host, const tls_options *options
         SSL_CTX_free(ctx);
         return NULL;
       }
-    } else if (SSL_CTX_set_default_verify_paths(ctx) != 1) {
-      tls_error_string(err, err_len, "cannot load system CA certificates");
-      SSL_CTX_free(ctx);
-      return NULL;
+    } else {
+      bool have_ca = SSL_CTX_set_default_verify_paths(ctx) == 1;
+#ifdef _WIN32
+      if (!have_ca) ERR_clear_error();
+      if (load_windows_root_certs(ctx) > 0) have_ca = true;
+      if (!have_ca) {
+        snprintf(err, err_len,
+                 "cannot load system CA certificates (Windows certificate store unavailable, use --ssl-ca)");
+        SSL_CTX_free(ctx);
+        return NULL;
+      }
+#else
+      if (!have_ca) {
+        tls_error_string(err, err_len, "cannot load system CA certificates");
+        SSL_CTX_free(ctx);
+        return NULL;
+      }
+#endif
     }
   } else {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
@@ -196,42 +257,3 @@ void tc_tls_free(tc_tls *tls) {
   if (tls->ctx != NULL) SSL_CTX_free(tls->ctx);
   free(tls);
 }
-
-#else /* !TC_WITH_TLS */
-
-struct tc_tls {
-  int unused;
-};
-
-bool tc_tls_available(void) { return false; }
-
-tc_tls *tc_tls_start(socket_t sock, const char *host, const tls_options *options, char *err, size_t err_len) {
-  (void)sock;
-  (void)host;
-  (void)options;
-  snprintf(err, err_len, "this build of ttyd-client does not support TLS (rebuild with -DTC_WITH_TLS=ON)");
-  return NULL;
-}
-
-int tc_tls_read(tc_tls *tls, void *buf, size_t len) {
-  (void)tls;
-  (void)buf;
-  (void)len;
-  return TC_IO_ERROR;
-}
-
-int tc_tls_write(tc_tls *tls, const void *buf, size_t len) {
-  (void)tls;
-  (void)buf;
-  (void)len;
-  return TC_IO_ERROR;
-}
-
-int tc_tls_pending(tc_tls *tls) {
-  (void)tls;
-  return 0;
-}
-
-void tc_tls_free(tc_tls *tls) { (void)tls; }
-
-#endif

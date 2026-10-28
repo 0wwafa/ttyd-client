@@ -28,7 +28,7 @@ to the local terminal.
 .PP
 Features:
 .IP \(bu 2
-Pure C, no run time dependencies (TLS is optional, provided by OpenSSL)
+Pure C, statically linked OpenSSL for TLS (wss/https)
 .IP \(bu 2
 Same protocol and server options as the ttyd web client
 .IP \(bu 2
@@ -216,7 +216,11 @@ Client certificate (PEM) used when the server requests one.
 Private key (PEM) belonging to the client certificate.
 .TP
 .BR \-A ", " \-\-ssl\-ca " <path>"
-CA bundle used to verify the server certificate, instead of the system store.
+CA bundle used to verify the server certificate, instead of the platform
+trust store. On Windows the platform store is the Windows certificate store
+(current user and local machine
+.BR ROOT );
+elsewhere it is the OpenSSL default CA file and directory.
 .TP
 .BR \-x ", " \-\-proxy " <url>"
 HTTP proxy used for the connection (format:

@@ -6,12 +6,13 @@
 
 #include "net.h"
 
-/* TLS support is optional: when the client is built without OpenSSL
- * (TC_WITH_TLS undefined) wss:// urls are rejected with a clear error. */
+/* TLS support is always built in. */
 
 typedef struct {
   bool verify;             /* verify the peer certificate (default: true) */
-  const char *ca_file;     /* additional CA bundle, NULL = system default */
+  const char *ca_file;     /* CA bundle override; NULL = platform trust store
+                            * (Windows certificate store on Windows, OpenSSL
+                            * default paths elsewhere) */
   const char *cert_file;   /* client certificate, NULL = none */
   const char *key_file;    /* client key, NULL = none */
   const char *server_name; /* SNI / verification name, NULL = use the url host */
@@ -33,8 +34,5 @@ int tc_tls_pending(tc_tls *tls);
 
 /* Send close_notify and free the TLS state (the socket is left open) */
 void tc_tls_free(tc_tls *tls);
-
-/* Whether the client was compiled with TLS support */
-bool tc_tls_available(void);
 
 #endif  // TTYD_CLIENT_TLS_H
