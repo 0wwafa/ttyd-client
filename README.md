@@ -2,7 +2,7 @@
 
 ![backend](https://github.com/0wwafa/ttyd-client/workflows/backend/badge.svg)
 ![release](https://github.com/0wwafa/ttyd-client/workflows/release/badge.svg)
-![GitHub](https://img.shields.io/github/license/0wwafa/ttyd-client)
+![GitHub](https://img.shields.io/github/license/0wwafa/ttyd-client?t=1)
 
 `ttyd-client` is a companion command line client for [ttyd](https://github.com/tsl0922/ttyd).
 It attaches your terminal to a terminal shared by a ttyd server, so a shared
