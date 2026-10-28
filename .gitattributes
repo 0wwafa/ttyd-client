@@ -1,0 +1,6 @@
+# Keep shell scripts and CI files with unix line endings on every platform
+*.sh text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.c text eol=lf
+*.h text eol=lf

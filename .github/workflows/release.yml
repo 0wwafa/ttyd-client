@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags: ["*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create/update (example: v1.2.3)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    uses: ./.github/workflows/backend.yml
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check version bump
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION=$(grep project CMakeLists.txt | awk '{print $3}')
+          if [ "v$VERSION" != "$TAG" ] && [ "$VERSION" != "$TAG" ]; then
+            echo "=== Version in CMakeLists.txt and git tag does not match!"
+            echo "=== Git Tag: $TAG, Version: $VERSION"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v8
+
+      - name: Prepare artifacts
+        run: |
+          mkdir build
+          for file in ttyd-client.*/*; do
+            target=$(echo "$file" | awk -F/ '{print $1}')
+            [[ "$file" == *.exe ]] && target="$target.exe"
+            mv "$file" "build/$target"
+          done
+          pushd build
+          sha256sum ttyd-client.* > SHA256SUMS
+          ls -l
+          popd
+
+      - uses: ncipollo/release-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ steps.tag.outputs.tag }}
+          commit: ${{ github.sha }}
+          artifacts: build/*
+          allowUpdates: true
+          draft: true

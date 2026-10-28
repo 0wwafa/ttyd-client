@@ -1,0 +1,8 @@
+#ifndef TTYD_CLIENT_VERSION_H
+#define TTYD_CLIENT_VERSION_H
+
+#ifndef TTYD_CLIENT_VERSION
+#define TTYD_CLIENT_VERSION "unknown"
+#endif
+
+#endif  // TTYD_CLIENT_VERSION_H

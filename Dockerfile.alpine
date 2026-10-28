@@ -1,0 +1,14 @@
+FROM alpine
+
+ARG TARGETARCH
+
+# Dependencies: static musl binary plus CA certificates for wss:// servers
+RUN apk add --no-cache ca-certificates tini
+
+# Application
+COPY ./dist/${TARGETARCH}/ttyd-client /usr/bin/ttyd-client
+
+WORKDIR /root
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["ttyd-client", "--help"]
