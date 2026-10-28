@@ -16,22 +16,23 @@
 #include <bcrypt.h>
 #undef NSIG
 #define NSIG 33
-const char *sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "IOT",  "EMT",  "FPE",
-                                 "KILL", "BUS",   "SEGV", "SYS",  "PIPE", "ALRM", "TERM", "URG",  "STOP",
-                                 "TSTP", "CONT",  "CHLD", "TTIN", "TTOU", "IO",   "XCPU", "XFSZ", "VTALRM",
-                                 "PROF", "WINCH", "PWR",  "USR1", "USR2", NULL};
+const char *const sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "IOT",  "EMT",  "FPE",
+                                       "KILL", "BUS",   "SEGV", "SYS",  "PIPE", "ALRM", "TERM", "URG",  "STOP",
+                                       "TSTP", "CONT",  "CHLD", "TTIN", "TTOU", "IO",   "XCPU", "XFSZ", "VTALRM",
+                                       "PROF", "WINCH", "PWR",  "USR1", "USR2", NULL};
+
 #elif defined(__linux__) && !defined(__ANDROID__)
-const char *sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "ABRT", "BUS",    "FPE",
-                                 "KILL", "USR1",  "SEGV", "USR2", "PIPE", "ALRM", "TERM", "STKFLT", "CHLD",
-                                 "CONT", "STOP",  "TSTP", "TTIN", "TTOU", "URG",  "XCPU", "XFSZ",   "VTALRM",
-                                 "PROF", "WINCH", "IO",   "PWR",  "SYS",  NULL};
-#else
-/* Fallback table (macOS, FreeBSD, OpenBSD, ...). Values are advisory only:
- * they are used to print and to look up the names ttyd accepts. */
-const char *sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "ABRT", "EMT",  "FPE",
-                                 "KILL", "BUS",   "SEGV", "SYS",  "PIPE", "ALRM", "TERM", "URG",  "STOP",
-                                 "TSTP", "CONT",  "CHLD", "TTIN", "TTOU", "IO",   "XCPU", "XFSZ", "VTALRM",
-                                 "PROF", "WINCH", "PWR",  "USR1", "USR2", NULL};
+const char *const sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "ABRT", "BUS",    "FPE",
+                                       "KILL", "USR1",  "SEGV", "USR2", "PIPE", "ALRM", "TERM", "STKFLT", "CHLD",
+                                       "CONT", "STOP",  "TSTP", "TTIN", "TTOU", "URG",  "XCPU", "XFSZ",   "VTALRM",
+                                       "PROF", "WINCH", "IO",   "PWR",  "SYS",  NULL};
+
+#elif !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+/* Fallback table for platforms that do not already provide sys_signame. */
+const char *const sys_signame[NSIG] = {"zero", "HUP",   "INT",  "QUIT", "ILL",  "TRAP", "ABRT", "EMT",  "FPE",
+                                       "KILL", "BUS",   "SEGV", "SYS",  "PIPE", "ALRM", "TERM", "URG",  "STOP",
+                                       "TSTP", "CONT",  "CHLD", "TTIN", "TTOU", "IO",   "XCPU", "XFSZ", "VTALRM",
+                                       "PROF", "WINCH", "PWR",  "USR1", "USR2", NULL};
 #endif
 
 void *xmalloc(size_t size) {
