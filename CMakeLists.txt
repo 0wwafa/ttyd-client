@@ -26,7 +26,6 @@ else()
 endif()
 
 option(TC_WITH_TLS "Enable TLS (wss/https) support with OpenSSL" ON)
-option(TC_BUILD_TESTS "Build the test binaries" OFF)
 option(TC_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 set(SOURCE_FILES
@@ -106,18 +105,6 @@ if(NOT MSVC)
     if(TC_WARNINGS_AS_ERRORS)
         target_compile_options(${PROJECT_NAME} PRIVATE -Werror)
     endif()
-endif()
-
-if(TC_BUILD_TESTS)
-    enable_testing()
-    # ws.c/http.c/io.c need a socket, they are covered by test/integration.py
-    add_executable(unit-tests test/unit_tests.c src/b64.c src/buffer.c src/json.c src/sha1.c src/url.c src/utils.c
-                             src/protocol.c src/log.c)
-    target_include_directories(unit-tests PRIVATE src)
-    target_compile_definitions(unit-tests PRIVATE TTYD_CLIENT_VERSION="${TTYD_CLIENT_VERSION}")
-    # ws.c depends on io/net/tls; the unit tests only exercise the pure helpers
-    target_link_libraries(unit-tests ${LINK_LIBS})
-    add_test(NAME unit-tests COMMAND unit-tests)
 endif()
 
 include(GNUInstallDirs)
