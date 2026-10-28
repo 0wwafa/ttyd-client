@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "compat.h"
 #include "client.h"
 #include "json.h"
 #include "log.h"
