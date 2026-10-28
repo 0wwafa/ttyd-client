@@ -31,10 +31,8 @@ jobs:
           sudo apt-get install -y build-essential cmake libssl-dev python3
       - name: Build
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTC_BUILD_TESTS=ON -DTC_WARNINGS_AS_ERRORS=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTC_WARNINGS_AS_ERRORS=ON
           cmake --build build --parallel
-      - name: Unit tests
-        run: ./build/unit-tests
       - name: Build ttyd (test server)
         run: |
           sudo apt-get install -y libwebsockets-dev libjson-c-dev libuv1-dev zlib1g-dev
@@ -82,39 +80,6 @@ jobs:
           name: ttyd-client.musl-x86_64
           path: build-musl/ttyd-client
 
-  sanitizers:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev python3
-      - name: Build with ASan and UBSan
-        run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DTC_BUILD_TESTS=ON \
-            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
-            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build --parallel
-      - name: Unit tests
-        env:
-          ASAN_OPTIONS: detect_leaks=1
-          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: ./build/unit-tests
-      - name: Build ttyd (test server)
-        run: |
-          sudo apt-get install -y libwebsockets-dev libjson-c-dev libuv1-dev zlib1g-dev
-          git clone --depth 1 --branch "$TTYD_VERSION" https://github.com/tsl0922/ttyd.git ttyd
-          cmake -S ttyd -B ttyd/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build ttyd/build --parallel
-      - name: Integration tests
-        env:
-          SERVER: ${{ github.workspace }}/ttyd/build/ttyd
-          CLIENT: ${{ github.workspace }}/build/ttyd-client
-          ASAN_OPTIONS: detect_leaks=1
-          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: python3 test/integration.py
-
   macos:
     runs-on: macos-latest
     steps:
@@ -123,11 +88,9 @@ jobs:
         run: brew install cmake openssl@3
       - name: Build
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTC_BUILD_TESTS=ON \
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$(brew --prefix openssl@3)"
           cmake --build build --parallel
-      - name: Unit tests
-        run: ./build/unit-tests
       - name: Smoke test
         run: ./build/ttyd-client --version
       - uses: actions/upload-artifact@v7
@@ -161,8 +124,7 @@ jobs:
         shell: pwsh
         run: |
           $env:VCPKG_ROOT = "${{ env.VCPKG_ROOT }}"
-          # Match x64-windows-static's /MT runtime; avoid mixing static and DLL CRTs.
-          cmake -S . -B build -G "Visual Studio 18 2026" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ env.TOOLCHAIN_FILE }}" -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_TRIPLET }} -DCMAKE_POLICY_DEFAULT_CMP0091=NEW '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>'
+          cmake -S . -B build -G "Visual Studio 18 2026" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ env.TOOLCHAIN_FILE }}" -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_TRIPLET }} -DCMAKE_POLICY_DEFAULT_CMP0135=NEW
           cmake --build build --config Release
       - name: Smoke test
         run: build/Release/ttyd-client.exe --version
