@@ -123,7 +123,7 @@ ttyd-client ws://localhost:7681/mounted/here/ws
       Private key (PEM) belonging to the client certificate.
 
   -A, --ssl-ca \<path\>
-      CA bundle used to verify the server certificate, instead of the platform trust store. On Windows the platform store is the Windows certificate store (current user and local machine `ROOT`); elsewhere it is the OpenSSL default CA file and directory.
+      CA bundle used to verify the server certificate, instead of the platform trust store. On Windows the platform store is the Windows certificate store (current user and local machine `ROOT`); elsewhere it is the OpenSSL default CA file and directory, with a fallback to the conventional system bundle locations (for example */etc/ssl/certs/ca-certificates.crt* and */etc/pki/tls/certs/ca-bundle.crt*). The **SSL_CERT_FILE** and **SSL_CERT_DIR** environment variables override the default paths. Static binaries do not embed a CA bundle and use the trust store of the machine they run on.
 
   -x, --proxy \<url\>
       HTTP proxy used for the connection (format: `http://[user:password@]host[:port]`). By default the **https_proxy**, **http_proxy** or **all_proxy** environment variables are used.

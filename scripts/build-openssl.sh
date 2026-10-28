@@ -91,6 +91,11 @@ case "${TRIPLE}" in
     *mingw32*) is_windows=true ;;
 esac
 
+is_s390x=false
+case "${TRIPLE}" in
+    s390x*) is_s390x=true ;;
+esac
+
 # OpenSSL's build needs the Linux UAPI headers. Ubuntu's musl-gcc wrapper does
 # not ship them, so fall back to the host copies when the target sysroot has
 # none. Cross toolchains carry their own and are left alone.
@@ -148,6 +153,18 @@ if [ "${is_windows}" = true ]; then
             (cd "${SOURCE_DIR}" && patch --batch -p1 < "${SCRIPT_DIR}/openssl-mingw-sio-udp-netreset.patch")
             ;;
     esac
+fi
+
+# OpenSSL's s390x Keccak assembly uses the z10-only "cijne" instruction,
+# while toolchains that default to z900 reject it (OpenSSL issue #27323).
+# Newer OpenSSL releases already declare the minimum architecture in the
+# generated assembly.
+if [ "${is_s390x}" = true ]; then
+    KECCAK_ASM="${SOURCE_DIR}/crypto/sha/asm/keccak1600-s390x.pl"
+    if [ -f "${KECCAK_ASM}" ] && ! grep -q '^\.machine[[:space:]]*"z10"' "${KECCAK_ASM}"; then
+        echo "=== Applying s390x Keccak z10 baseline patch..."
+        (cd "${SOURCE_DIR}" && patch --batch -p1 < "${SCRIPT_DIR}/openssl-s390x-keccak-z10.patch")
+    fi
 fi
 
 echo "=== Configuring OpenSSL ${OPENSSL_VERSION} (${OPENSSL_TARGET})..."

@@ -82,6 +82,13 @@ prebuilt static OpenSSL instead:
 make static VENDOR=0 OPENSSL_ROOT_DIR=/path/to/static/openssl
 ```
 
+Static binaries do not embed a CA bundle: certificate verification uses the
+trust store of the machine they run on. The usual bundle locations
+(`/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, and
+similar) are detected at run time, and the standard `SSL_CERT_FILE` and
+`SSL_CERT_DIR` environment variables are honoured. Use `-A/--ssl-ca` to point
+at a specific bundle.
+
 Use `OPENSSL_VERSION=3.5.5` to vendor a different OpenSSL release.
 
 Cross compilation uses the same musl toolchains as ttyd:

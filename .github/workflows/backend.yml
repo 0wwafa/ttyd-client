@@ -1,20 +1,6 @@
 name: backend
 
 on:
-  push:
-    paths:
-      - ".github/workflows/backend.yml"
-      - "CMakeLists.txt"
-      - "src/*"
-      - "test/*"
-      - "scripts/*"
-  pull_request:
-    paths:
-      - ".github/workflows/backend.yml"
-      - "CMakeLists.txt"
-      - "src/*"
-      - "test/*"
-      - "scripts/*"
   workflow_call:
 
 jobs:

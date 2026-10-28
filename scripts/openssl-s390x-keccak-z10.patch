@@ -1,0 +1,10 @@
+--- a/crypto/sha/asm/keccak1600-s390x.pl
++++ b/crypto/sha/asm/keccak1600-s390x.pl
+@@ -67,6 +67,7 @@
+ 
+ $code.=<<___;
+ .text
++.machine	"z10"
+ 
+ .type	__KeccakF1600,\@function
+ .align	32

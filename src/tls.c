@@ -2,10 +2,12 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
+#include <unistd.h>
 #endif
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -50,6 +52,87 @@ static bool is_ip_address(const char *host) {
 static int wait_fd(socket_t sock, int timeout_ms, bool writing) {
   return writing ? net_wait_writable(sock, timeout_ms) : net_wait_readable(sock, timeout_ms);
 }
+
+#ifndef _WIN32
+/* Count the certificates that are actually present in the trust store.
+ * SSL_CTX_set_default_verify_paths() returns success even when nothing was
+ * loaded, for example when the compiled in OPENSSLDIR does not exist. */
+static size_t store_cert_count(SSL_CTX *ctx) {
+  STACK_OF(X509_OBJECT) *objects = X509_STORE_get0_objects(SSL_CTX_get_cert_store(ctx));
+  if (objects == NULL) return 0;
+
+  size_t count = 0;
+  for (int i = 0; i < sk_X509_OBJECT_num(objects); i++) {
+    if (X509_OBJECT_get_type(sk_X509_OBJECT_value(objects, i)) == X509_LU_X509) count++;
+  }
+  return count;
+}
+
+/* Load the system trust store. Static OpenSSL builds have OPENSSLDIR compiled
+ * in as the directory they were built in, which usually does not exist on the
+ * machine that runs the binary, so fall back to the conventional locations of
+ * the system CA bundle. */
+static bool load_system_ca(SSL_CTX *ctx) {
+  const char *env_file = getenv("SSL_CERT_FILE");
+  const char *env_dir = getenv("SSL_CERT_DIR");
+  /* Explicit overrides are honoured, even when they end up loading nothing. */
+  bool env_ca = (env_file != NULL && env_file[0] != '\0') || (env_dir != NULL && env_dir[0] != '\0');
+
+  if (SSL_CTX_set_default_verify_paths(ctx) == 1) {
+    size_t count = store_cert_count(ctx);
+    if (count > 0) {
+      log_debug("loaded %zu CA certificate(s) from the OpenSSL default paths\n", count);
+      return true;
+    }
+    if (env_ca) {
+      log_debug("using CA certificates from SSL_CERT_FILE/SSL_CERT_DIR\n");
+      return true;
+    }
+  }
+
+  if (!env_ca) {
+    static const char *const bundles[] = {
+        "/etc/ssl/certs/ca-certificates.crt",                /* Debian, Ubuntu, Arch, Alpine, Gentoo */
+        "/etc/pki/tls/certs/ca-bundle.crt",                  /* Fedora, RHEL, CentOS */
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", /* Fedora, RHEL */
+        "/etc/ssl/ca-bundle.pem",                            /* openSUSE */
+        "/etc/ssl/cert.pem",                                 /* Alpine, macOS, FreeBSD, OpenBSD */
+        "/usr/local/etc/ssl/cert.pem",                       /* FreeBSD ports */
+        "/usr/local/share/certs/ca-root-nss.crt",            /* FreeBSD ca_root_nss */
+        "/data/data/com.termux/files/usr/etc/tls/cert.pem",  /* Termux */
+    };
+    for (size_t i = 0; i < sizeof(bundles) / sizeof(bundles[0]); i++) {
+      ERR_clear_error();
+      if (SSL_CTX_load_verify_locations(ctx, bundles[i], NULL) == 1) {
+        size_t count = store_cert_count(ctx);
+        if (count > 0) {
+          log_debug("loaded %zu CA certificate(s) from %s\n", count, bundles[i]);
+          return true;
+        }
+      }
+    }
+
+    static const char *const dirs[] = {
+        "/etc/ssl/certs",
+        "/etc/pki/tls/certs",
+        "/usr/local/etc/ssl/certs",
+        "/system/etc/security/cacerts",                  /* Android */
+        "/data/data/com.termux/files/usr/etc/tls/certs", /* Termux */
+    };
+    for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
+      if (access(dirs[i], R_OK | X_OK) != 0) continue;
+      ERR_clear_error();
+      if (SSL_CTX_load_verify_locations(ctx, NULL, dirs[i]) == 1) {
+        log_debug("using CA certificate directory %s\n", dirs[i]);
+        return true;
+      }
+    }
+  }
+
+  ERR_clear_error();
+  return false;
+}
+#endif
 
 #ifdef _WIN32
 /* Add the certificates from one Windows ROOT store to the OpenSSL trust store.
@@ -114,19 +197,19 @@ tc_tls *tc_tls_start(socket_t sock, const char *host, const tls_options *options
         return NULL;
       }
     } else {
-      bool have_ca = SSL_CTX_set_default_verify_paths(ctx) == 1;
 #ifdef _WIN32
+      bool have_ca = SSL_CTX_set_default_verify_paths(ctx) == 1;
       if (!have_ca) ERR_clear_error();
       if (load_windows_root_certs(ctx) > 0) have_ca = true;
       if (!have_ca) {
         snprintf(err, err_len,
-                 "cannot load system CA certificates (Windows certificate store unavailable, use --ssl-ca)");
+                 "cannot load system CA certificates (Windows certificate store unavailable, use -A/--ssl-ca)");
         SSL_CTX_free(ctx);
         return NULL;
       }
 #else
-      if (!have_ca) {
-        tls_error_string(err, err_len, "cannot load system CA certificates");
+      if (!load_system_ca(ctx)) {
+        snprintf(err, err_len, "cannot load system CA certificates (no CA bundle found, use -A/--ssl-ca)");
         SSL_CTX_free(ctx);
         return NULL;
       }

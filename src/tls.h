@@ -12,7 +12,8 @@ typedef struct {
   bool verify;             /* verify the peer certificate (default: true) */
   const char *ca_file;     /* CA bundle override; NULL = platform trust store
                             * (Windows certificate store on Windows, OpenSSL
-                            * default paths elsewhere) */
+                            * default paths plus the conventional system CA
+                            * bundle locations elsewhere) */
   const char *cert_file;   /* client certificate, NULL = none */
   const char *key_file;    /* client key, NULL = none */
   const char *server_name; /* SNI / verification name, NULL = use the url host */
