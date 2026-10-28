@@ -114,10 +114,10 @@ build_client() {
     make -j"$(nproc)"
 
     mkdir -p "${PROJECT_DIR}/build"
-    local suffix=""
-    [ "${ALIAS}" = "win32" ] && suffix=".exe"
-    cp ttyd-client "${PROJECT_DIR}/build/ttyd-client.${ALIAS}${suffix}"
-    file "${PROJECT_DIR}/build/ttyd-client.${ALIAS}${suffix}"
+    local output_name="ttyd-client"
+    [ "${ALIAS}" = "win32" ] && output_name="ttyd-client.exe"
+    cp ttyd-client "${PROJECT_DIR}/build/${output_name}"
+    file "${PROJECT_DIR}/build/${output_name}"
 }
 
 build() {
