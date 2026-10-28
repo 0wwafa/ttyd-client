@@ -4,6 +4,7 @@
 
 #ifdef _MSC_VER
 #include <string.h>
+#include <basetsd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -17,7 +18,10 @@
 #define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
 #endif
 
+#ifndef _SSIZE_T_DEFINED
 typedef SSIZE_T ssize_t;
+#define _SSIZE_T_DEFINED
+#endif
 
 #endif /* _MSC_VER */
 
