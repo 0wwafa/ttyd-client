@@ -258,11 +258,13 @@ bool term_init(tc_term *term, char *err, size_t err_len) {
 bool term_enter_raw(tc_term *term, char *err, size_t err_len) {
   if (!term->stdin_is_tty) return true;
 
-  /* Virtual terminal input gives us the same escape sequences as on *nix */
-  DWORD in_mode = ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS;
+  /* Virtual terminal input gives us the same escape sequences as on *nix.
+   * Keep Quick Edit and Insert Mode exactly as they were when we started. */
+  DWORD preserved = (DWORD)term->saved_in_mode & (ENABLE_QUICK_EDIT_MODE | ENABLE_INSERT_MODE);
+  DWORD in_mode = ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS | preserved;
   if (!SetConsoleMode((HANDLE)term->stdin_handle, in_mode)) {
     /* Older Windows: fall back to a mode without echo/line editing */
-    in_mode = 0;
+    in_mode = ENABLE_EXTENDED_FLAGS | preserved;
     if (!SetConsoleMode((HANDLE)term->stdin_handle, in_mode)) {
       snprintf(err, err_len, "cannot set console input mode (error %lu)", (unsigned long)GetLastError());
       return false;
